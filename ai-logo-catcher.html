@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Logo Catcher - Outskill</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f0f2f5;
+            overflow: hidden;
+            touch-action: none;
+            user-select: none;
+        }
+
+        .game-container {
+            max-width: 480px;
+            height: 100vh;
+            margin: 0 auto;
+            background: white;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Start Screen */
+        .start-screen {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .start-screen.hidden {
+            display: none;
+        }
+
+        .game-title {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            animation: bounce 2s infinite;
+        }
+
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .outskill-logo {
+            width: 150px;
+            height: auto;
+            margin-bottom: 30px;
+        }
+
+        .how-to-play {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            backdrop-filter: blur(10px);
+        }
+
+        .how-to-play h3 {
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .how-to-play p {
+            margin: 8px 0;
+            font-size: 1.1em;
+        }
+
+        .start-button {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.3em;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .start-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Countdown */
+        .countdown {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 90;
+            color: white;
+            font-size: 5em;
+            font-weight: bold;
+        }
+
+        .countdown.show {
+            display: flex;
+        }
+
+        /* Game Header */
+        .game-header {
+            position: absolute;
+            top: 0;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.95);
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            z-index: 10;
+        }
+
+        .score, .lives {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .header-logo {
+            height: 40px;
+        }
+
+        /* Game Area */
+        .game-area {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            background: white;
+            overflow: hidden;
+        }
+
+        /* Catcher */
+        .catcher {
+            position: absolute;
+            bottom: 20px;
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 15px;
+            transition: left 0.1s ease-out;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2em;
+        }
+
+        /* Falling Items */
+        .falling-item {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+        }
+
+        .falling-item.logo {
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+        }
+
+        .falling-item.obstacle {
+            background-image: url('data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMjQgMjQiIGZpbGw9IiM5OTkiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTEyIDJDNi40OCAyIDIgNi40OCAyIDEyczQuNDggMTAgMTAgMTAgMTAtNC40OCAxMC0xMFMxNy41MiAyIDEyIDJ6bTAgMThDNy41OSAyMCA0IDE2LjQxIDQgMTJTNy41OSA0IDEyIDRzOCAzLjU5IDggOC0zLjU5IDgtOCA4eiIvPjxwYXRoIGQ9Ik0xMyA3aC0ydjZoMlY3em0wIDhoLTJ2Mmgydi0yeiIvPjwvc3ZnPg==');
+        }
+
+        /* Tooltip */
+        .tooltip {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 0.9em;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 20;
+            max-width: 250px;
+            text-align: center;
+        }
+
+        .tooltip.show {
+            opacity: 1;
+        }
+
+        /* Game Over Screen */
+        .game-over {
+            position: fixed; /* Changed to fixed */
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.95);
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999; /* Very high z-index */
+            color: white;
+            padding: 20px;
+            text-align: center;
+            top: 0;
+            left: 0;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s, visibility 0.3s;
+        }
+
+        .game-over.show {
+            display: flex !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+        }
+
+        .game-over h2 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+        }
+
+        .final-score {
+            font-size: 3em;
+            margin-bottom: 30px;
+            color: #4CAF50;
+        }
+
+        .game-over-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 100%;
+            max-width: 300px;
+        }
+
+        .replay-button, .workshop-button {
+            padding: 15px 30px;
+            font-size: 1.1em;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .replay-button {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .workshop-button {
+            background: #ff6b6b;
+            color: white;
+        }
+
+        .share-prompt {
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+        }
+
+        .share-button {
+            background: #1DA1F2;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            margin-top: 15px;
+            font-size: 1em;
+        }
+
+        /* Sound Toggle */
+        .sound-toggle {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            z-index: 15;
+            font-size: 1.2em;
+        }
+
+        /* Screen Shake */
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        .shake {
+            animation: shake 0.3s;
+        }
+
+        /* Responsive */
+        @media (min-width: 768px) {
+            .game-container {
+                box-shadow: 0 0 30px rgba(0, 0, 0, 0.1);
+                border-radius: 10px;
+                margin-top: 20px;
+                height: calc(100vh - 40px);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <!-- Start Screen -->
+        <div class="start-screen" id="startScreen">
+            <h1 class="game-title">🎯 AI Logo Catcher</h1>
+            <img src="https://www.outskill.com/oll.png" alt="Outskill" class="outskill-logo">
+            <div class="how-to-play">
+                <h3>How to Play</h3>
+                <p>📱 Swipe or use arrow keys to move</p>
+                <p>✅ Catch the AI logos</p>
+                <p>❌ Avoid the rocks</p>
+                <p>⚡ Game gets faster over time</p>
+            </div>
+            <button class="start-button" onclick="startGame()">▶️ Start Game</button>
+        </div>
+
+        <!-- Countdown -->
+        <div class="countdown" id="countdown"></div>
+
+        <!-- Game Header -->
+        <div class="game-header" style="display: none;" id="gameHeader">
+            <div class="score">Score: <span id="score">0</span></div>
+            <img src="https://www.outskill.com/oll.png" alt="Outskill" class="header-logo">
+            <div class="lives">Lives: <span id="lives">3</span></div>
+        </div>
+
+        <!-- Game Area -->
+        <div class="game-area" id="gameArea">
+            <div class="catcher" id="catcher">🎯</div>
+        </div>
+
+        <!-- Tooltip -->
+        <div class="tooltip" id="tooltip"></div>
+
+        <!-- Game Over -->
+        <div class="game-over" id="gameOver">
+            <h2>Game Over!</h2>
+            <div class="final-score">Score: <span id="finalScore">0</span></div>
+            <div class="game-over-buttons">
+                <button class="replay-button" onclick="resetGame()">🔄 Play Again</button>
+                <button class="workshop-button" onclick="workshopCTA()">
+                    🚀 Join our 2-Day GenAI Workshop!
+                </button>
+            </div>
+            <div class="share-prompt">
+                <p>Want to master these tools?</p>
+                <button class="share-button" onclick="shareScore()">📣 Share Score</button>
+            </div>
+        </div>
+
+        <!-- Sound Toggle -->
+        <button class="sound-toggle" id="soundToggle" onclick="toggleSound()">🔊</button>
+    </div>
+
+    <script>
+        // Game State
+        let score = 0;
+        let lives = 3;
+        let gameSpeed = 1;
+        let gameActive = false;
+        let soundEnabled = true;
+        let catcherPosition = 50;
+        let fallingItems = [];
+        let touchStartX = null;
+
+        // AI Logos Configuration
+        const aiLogos = [
+            {
+                name: 'ChatGPT',
+                icon: 'data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMjQgMjQiIGZpbGw9IiMxMGE5N2QiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTEyIDJDNi40OCAyIDIgNi40OCAyIDEyczQuNDggMTAgMTAgMTAgMTAtNC40OCAxMC0xMFMxNy41MiAyIDEyIDJ6bTAgMThjLTQuNDEgMC04LTMuNTktOC04czMuNTktOCA4LTggOCAzLjU5IDggOC0zLjU5IDgtOCA4em0wLTE0Yy0zLjMxIDAtNiAyLjY5LTYgNnMyLjY5IDYgNiA2IDYtMi42OSA2LTYtMi42OS02LTYtNnptMCA5Yy0xLjY2IDAtMy0xLjM0LTMtM3MxLjM0LTMgMy0zIDMgMS4zNCAzIDMtMS4zNCAzLTMgM3oiLz48L3N2Zz4=',
+                tooltip: 'Use it for writing & productivity.'
+            },
+            {
+                name: 'Midjourney',
+                icon: 'data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMjQgMjQiIGZpbGw9IiM1ODY1ZjIiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTEyIDJDNi40OCAyIDIgNi40OCAyIDEyczQuNDggMTAgMTAgMTAgMTAtNC40OCAxMC0xMFMxNy41MiAyIDEyIDJ6bTAgMThjLTQuNDEgMC04LTMuNTktOC04czMuNTktOCA4LTggOCAzLjU5IDggOC0zLjU5IDgtOCA4em0wLTE0Yy0zLjMxIDAtNiAyLjY5LTYgNnMyLjY5IDYgNiA2IDYtMi42OSA2LTYtMi42OS02LTYtNnptMCA5Yy0xLjY2IDAtMy0xLjM0LTMtM3MxLjM0LTMgMy0zIDMgMS4zNCAzIDMtMS4zNCAzLTMgM3oiLz48L3N2Zz4=',
+                tooltip: 'Great for generative art.'
+            },
+            {
+                name: 'Claude',
+                icon: 'data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMjQgMjQiIGZpbGw9IiNkOTdlMDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTEyIDJDNi40OCAyIDIgNi40OCAyIDEyczQuNDggMTAgMTAgMTAgMTAtNC40OCAxMC0xMFMxNy41MiAyIDEyIDJ6bTAgMThjLTQuNDEgMC04LTMuNTktOC04czMuNTktOCA4LTggOCAzLjU5IDggOC0zLjU5IDgtOCA4em0wLTE0Yy0zLjMxIDAtNiAyLjY5LTYgNnMyLjY5IDYgNiA2IDYtMi42OSA2LTYtMi42OS02LTYtNnptMCA5Yy0xLjY2IDAtMy0xLjM0LTMtM3MxLjM0LTMgMy0zIDMgMS4zNCAzIDMtMS4zNCAzLTMgM3oiLz48L3N2Zz4=',
+                tooltip: 'Summarizes documents in seconds.'
+            },
+            {
+                name: 'Perplexity',
+                icon: 'data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMjQgMjQiIGZpbGw9IiMyMGI4ZGIiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTEyIDJDNi40OCAyIDIgNi40OCAyIDEyczQuNDggMTAgMTAgMTAgMTAtNC40OCAxMC0xMFMxNy41MiAyIDEyIDJ6bTAgMThjLTQuNDEgMC04LTMuNTktOC04czMuNTktOCA4LTggOCAzLjU5IDggOC0zLjU5IDgtOCA4em0wLTE0Yy0zLjMxIDAtNiAyLjY5LTYgNnMyLjY5IDYgNiA2IDYtMi42OSA2LTYtMi42OS02LTYtNnptMCA5Yy0xLjY2IDAtMy0xLjM0LTMtM3MxLjM0LTMgMy0zIDMgMS4zNCAzIDMtMS4zNCAzLTMgM3oiLz48L3N2Zz4=',
+                tooltip: 'AI-powered search engine.'
+            },
+            {
+                name: 'RunwayML',
+                icon: 'data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMjQgMjQiIGZpbGw9IiNmZjYxNTQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTEyIDJDNi40OCAyIDIgNi40OCAyIDEyczQuNDggMTAgMTAgMTAgMTAtNC40OCAxMC0xMFMxNy41MiAyIDEyIDJ6bTAgMThjLTQuNDEgMC04LTMuNTktOC04czMuNTktOCA4LTggOCAzLjU5IDggOC0zLjU5IDgtOCA4em0wLTE0Yy0zLjMxIDAtNiAyLjY5LTYgNnMyLjY5IDYgNiA2IDYtMi42OSA2LTYtMi42OS02LTYtNnptMCA5Yy0xLjY2IDAtMy0xLjM0LTMtM3MxLjM0LTMgMy0zIDMgMS4zNCAzIDMtMS4zNCAzLTMgM3oiLz48L3N2Zz4=',
+                tooltip: 'Turn ideas into videos.'
+            },
+            {
+                name: 'Synthesia',
+                icon: 'data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMjQgMjQiIGZpbGw9IiM0ZTRlZTQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTEyIDJDNi40OCAyIDIgNi40OCAyIDEyczQuNDggMTAgMTAgMTAgMTAtNC40OCAxMC0xMFMxNy41MiAyIDEyIDJ6bTAgMThjLTQuNDEgMC04LTMuNTktOC04czMuNTktOCA4LTggOCAzLjU5IDggOC0zLjU5IDgtOCA4em0wLTE0Yy0zLjMxIDAtNiAyLjY5LTYgNnMyLjY5IDYgNiA2IDYtMi42OSA2LTYtMi42OS02LTYtNnptMCA5Yy0xLjY2IDAtMy0xLjM0LTMtM3MxLjM0LTMgMy0zIDMgMS4zNCAzIDMtMS4zNCAzLTMgM3oiLz48L3N2Zz4=',
+                tooltip: 'AI avatars for videos.'
+            },
+            {
+                name: 'D-ID',
+                icon: 'data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMjQgMjQiIGZpbGw9IiNhNjRmZmYiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTEyIDJDNi40OCAyIDIgNi40OCAyIDEyczQuNDggMTAgMTAgMTAgMTAtNC40OCAxMC0xMFMxNy41MiAyIDEyIDJ6bTAgMThjLTQuNDEgMC04LTMuNTktOC04czMuNTktOCA4LTggOCAzLjU5IDggOC0zLjU5IDgtOCA4em0wLTE0Yy0zLjMxIDAtNiAyLjY5LTYgNnMyLjY5IDYgNiA2IDYtMi42OSA2LTYtMi42OS02LTYtNnptMCA5Yy0xLjY2IDAtMy0xLjM0LTMtM3MxLjM0LTMgMy0zIDMgMS4zNCAzIDMtMS4zNCAzLTMgM3oiLz48L3N2Zz4=',
+                tooltip: 'Make talking head videos.'
+            },
+            {
+                name: 'Fireflies',
+                icon: 'data:image/svg+xml;base64,PHN2ZyB2aWV3Qm94PSIwIDAgMjQgMjQiIGZpbGw9IiM3YzNhZWQiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHBhdGggZD0iTTEyIDJDNi40OCAyIDIgNi40OCAyIDEyczQuNDggMTAgMTAgMTAgMTAtNC40OCAxMC0xMFMxNy41MiAyIDEyIDJ6bTAgMThjLTQuNDEgMC04LTMuNTktOC04czMuNTktOCA4LTggOCAzLjU5IDggOC0zLjU5IDgtOCA4em0wLTE0Yy0zLjMxIDAtNiAyLjY5LTYgNnMyLjY5IDYgNiA2IDYtMi42OSA2LTYtMi42OS02LTYtNnptMCA5Yy0xLjY2IDAtMy0xLjM0LTMtM3MxLjM0LTMgMy0zIDMgMS4zNCAzIDMtMS4zNCAzLTMgM3oiLz48L3N2Zz4=',
+                tooltip: 'Summarizes meetings.'
+            }
+        ];
+
+        // DOM Elements
+        const startScreen = document.getElementById('startScreen');
+        const countdown = document.getElementById('countdown');
+        const gameHeader = document.getElementById('gameHeader');
+        const gameArea = document.getElementById('gameArea');
+        const catcher = document.getElementById('catcher');
+        const tooltip = document.getElementById('tooltip');
+        const gameOver = document.getElementById('gameOver');
+        const soundToggle = document.getElementById('soundToggle');
+
+        // Audio Context for sounds
+        let audioContext;
+        function initAudio() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playSound(type) {
+            if (!soundEnabled || !audioContext) return;
+            
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+            
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+            
+            switch(type) {
+                case 'catch':
+                    oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+                    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+                    break;
+                case 'hit':
+                    oscillator.frequency.setValueAtTime(200, audioContext.currentTime);
+                    gainNode.gain.setValueAtTime(0.5, audioContext.currentTime);
+                    oscillator.type = 'square';
+                    break;
+                case 'gameover':
+                    oscillator.frequency.setValueAtTime(100, audioContext.currentTime);
+                    gainNode.gain.setValueAtTime(0.4, audioContext.currentTime);
+                    oscillator.type = 'sawtooth';
+                    break;
+            }
+            
+            oscillator.start(audioContext.currentTime);
+            oscillator.stop(audioContext.currentTime + 0.2);
+        }
+
+        // Start Game
+        function startGame() {
+            initAudio();
+            startScreen.classList.add('hidden');
+            showCountdown();
+        }
+
+        function showCountdown() {
+            countdown.classList.add('show');
+            let count = 3;
+            
+            const countInterval = setInterval(() => {
+                if (count > 0) {
+                    countdown.textContent = count;
+                    count--;
+                } else {
+                    countdown.textContent = 'Go!';
+                    setTimeout(() => {
+                        countdown.classList.remove('show');
+                        initGame();
+                    }, 500);
+                    clearInterval(countInterval);
+                }
+            }, 1000);
+        }
+
+        function initGame() {
+            gameActive = true;
+            score = 0;
+            lives = 3;
+            gameSpeed = 1;
+            catcherPosition = 50;
+            fallingItems = [];
+            
+            updateScore();
+            updateLives();
+            gameHeader.style.display = 'flex';
+            
+            updateCatcherPosition();
+            gameLoop();
+            spawnItems();
+            increaseSpeed();
+        }
+
+        // Update UI
+        function updateScore() {
+            document.getElementById('score').textContent = score;
+        }
+
+        function updateLives() {
+            document.getElementById('lives').textContent = lives;
+            console.log('Lives updated:', lives); // Debug log
+        }
+
+        function updateCatcherPosition() {
+            const gameWidth = gameArea.offsetWidth;
+            const catcherWidth = catcher.offsetWidth;
+            const position = (gameWidth - catcherWidth) * (catcherPosition / 100);
+            catcher.style.left = position + 'px';
+        }
+
+        // Controls
+        document.addEventListener('keydown', (e) => {
+            if (!gameActive) return;
+            
+            if (e.key === 'ArrowLeft') {
+                catcherPosition = Math.max(0, catcherPosition - 5);
+                updateCatcherPosition();
+            } else if (e.key === 'ArrowRight') {
+                catcherPosition = Math.min(100, catcherPosition + 5);
+                updateCatcherPosition();
+            }
+        });
+
+        // Touch Controls
+        gameArea.addEventListener('touchend', () => {
+            touchStartX = null;
+        });
+
+        // Mouse Controls
+        let mouseDown = false;
+        gameArea.addEventListener('mousedown', (e) => {
+            if (!gameActive) return;
+            mouseDown = true;
+            updateCatcherFromMouse(e);
+        });
+
+        gameArea.addEventListener('mousemove', (e) => {
+            if (!gameActive || !mouseDown) return;
+            updateCatcherFromMouse(e);
+        });
+
+        gameArea.addEventListener('mouseup', () => {
+            mouseDown = false;
+        });
+
+        function updateCatcherFromMouse(e) {
+            const rect = gameArea.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const percentage = (x / rect.width) * 100;
+            catcherPosition = Math.max(0, Math.min(100, percentage));
+            updateCatcherPosition();
+        }
+
+        // Spawn Items
+        function spawnItems() {
+            if (!gameActive) return;
+            
+            const item = document.createElement('div');
+            item.className = 'falling-item';
+            
+            // 80% chance for logo, 20% for obstacle
+            const isLogo = Math.random() < 0.8;
+            
+            if (isLogo) {
+                const logo = aiLogos[Math.floor(Math.random() * aiLogos.length)];
+                item.classList.add('logo');
+                item.style.backgroundImage = `url('${logo.icon}')`;
+                item.dataset.name = logo.name;
+                item.dataset.tooltip = logo.tooltip;
+            } else {
+                item.classList.add('obstacle');
+            }
+            
+            item.style.left = Math.random() * (gameArea.offsetWidth - 60) + 'px';
+            item.style.top = '-60px';
+            
+            gameArea.appendChild(item);
+            fallingItems.push({
+                element: item,
+                y: -60,
+                speed: (2 + Math.random() * 2) * gameSpeed
+            });
+            
+            spawnTimeout = setTimeout(() => spawnItems(), 1000 / gameSpeed);
+        }
+
+        // Game Loop
+        function gameLoop() {
+            if (!gameActive) return;
+            
+            // Create a copy of the array to avoid modification during iteration
+            const itemsCopy = [...fallingItems];
+            
+            itemsCopy.forEach((item) => {
+                if (!item.element || !item.element.parentNode) return;
+                
+                item.y += item.speed;
+                item.element.style.top = item.y + 'px';
+                
+                // Check collision
+                if (item.y > gameArea.offsetHeight - 140 && item.y < gameArea.offsetHeight - 40) {
+                    const itemRect = item.element.getBoundingClientRect();
+                    const catcherRect = catcher.getBoundingClientRect();
+                    
+                    if (itemRect.left < catcherRect.right &&
+                        itemRect.right > catcherRect.left &&
+                        itemRect.bottom > catcherRect.top &&
+                        itemRect.top < catcherRect.bottom) {
+                        
+                        // Collision detected
+                        if (item.element.classList.contains('logo')) {
+                            // Caught a logo
+                            score += 10;
+                            updateScore();
+                            playSound('catch');
+                            showTooltip(item.element.dataset.tooltip, itemRect);
+                        } else {
+                            // Hit an obstacle
+                            lives--;
+                            updateLives();
+                            playSound('hit');
+                            gameArea.classList.add('shake');
+                            setTimeout(() => gameArea.classList.remove('shake'), 300);
+                            
+                            console.log('Hit obstacle! Lives remaining:', lives); // Debug log
+                            
+                            if (lives <= 0) {
+                                console.log('Game Over - calling endGame()'); // Debug log
+                                setTimeout(() => endGame(), 100); // Slight delay to ensure UI updates
+                                return;
+                            }
+                        }
+                        
+                        // Remove the item
+                        item.element.remove();
+                        const index = fallingItems.indexOf(item);
+                        if (index > -1) {
+                            fallingItems.splice(index, 1);
+                        }
+                    }
+                }
+                
+                // Remove items that fell off screen
+                if (item.y > gameArea.offsetHeight) {
+                    item.element.remove();
+                    const index = fallingItems.indexOf(item);
+                    if (index > -1) {
+                        fallingItems.splice(index, 1);
+                    }
+                }
+            });
+            
+            if (gameActive) {
+                gameLoopId = requestAnimationFrame(gameLoop);
+            }
+        }
+
+        // Show Tooltip
+        function showTooltip(text, rect) {
+            tooltip.textContent = text;
+            tooltip.style.left = rect.left + 'px';
+            tooltip.style.top = (rect.top - 40) + 'px';
+            tooltip.classList.add('show');
+            
+            setTimeout(() => {
+                tooltip.classList.remove('show');
+            }, 2000);
+        }
+
+        // Increase Speed
+        function increaseSpeed() {
+            if (!gameActive) return;
+            
+            gameSpeed += 0.2;
+            speedTimeout = setTimeout(() => increaseSpeed(), 10000);
+        }
+
+        // End Game
+        function endGame() {
+            console.log('endGame() called'); // Debug log
+            
+            if (!gameActive) {
+                console.log('Game already ended');
+                return;
+            }
+            
+            gameActive = false;
+            
+            // Clear any remaining timeouts
+            if (spawnTimeout) clearTimeout(spawnTimeout);
+            if (speedTimeout) clearTimeout(speedTimeout);
+            
+            // Stop the game loop immediately
+            cancelAnimationFrame(gameLoopId);
+            
+            // Play sound after a short delay to avoid conflicts
+            setTimeout(() => playSound('gameover'), 100);
+            
+            // Remove all falling items
+            const allFallingItems = document.querySelectorAll('.falling-item');
+            allFallingItems.forEach(item => item.remove());
+            fallingItems = [];
+            
+            // Update final score
+            document.getElementById('finalScore').textContent = score;
+            
+            // Make absolutely sure the game over screen is visible
+            setTimeout(() => {
+                const gameOverElement = document.getElementById('gameOver');
+                gameOverElement.style.display = 'flex';
+                gameOverElement.style.visibility = 'visible';
+                gameOverElement.style.opacity = '1';
+                gameOverElement.classList.add('show');
+                
+                // Also hide the game area to prevent any visual conflicts
+                gameArea.style.opacity = '0.3';
+                
+                console.log('Game over screen should be visible now');
+                console.log('Game over element display:', gameOverElement.style.display);
+                console.log('Game over element visibility:', gameOverElement.style.visibility);
+            }, 200);
+        }
+
+        // Global variable for game loop
+        let gameLoopId;
+
+        // Reset Game
+        function resetGame() {
+            console.log('Resetting game'); // Debug log
+            
+            const gameOverElement = document.getElementById('gameOver');
+            gameOverElement.classList.remove('show');
+            gameOverElement.style.display = 'none';
+            gameOverElement.style.visibility = 'hidden';
+            gameOverElement.style.opacity = '0';
+            
+            gameHeader.style.display = 'none';
+            gameArea.style.opacity = '1'; // Restore game area opacity
+            
+            // Clear all falling items
+            const allFallingItems = document.querySelectorAll('.falling-item');
+            allFallingItems.forEach(item => item.remove());
+            fallingItems = [];
+            
+            // Show start screen
+            startScreen.classList.remove('hidden');
+        }
+
+        // Workshop CTA
+        function workshopCTA() {
+            window.open('https://www.outskill.com', '_blank');
+        }
+
+        // Share Score
+        function shareScore() {
+            const text = `🎮 Just scored ${score} in AI Logo Catcher! Can you beat me and win a free seat in our 2-day GenAI workshop? 🚀 Play now → ${window.location.href} Tag us with your score + #AILogoChallenge`;
+            
+            if (navigator.share) {
+                navigator.share({
+                    text: text
+                });
+            } else {
+                // Fallback to Twitter
+                const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
+                window.open(twitterUrl, '_blank');
+            }
+        }
+
+        // Toggle Sound
+        function toggleSound() {
+            soundEnabled = !soundEnabled;
+            soundToggle.textContent = soundEnabled ? '🔊' : '🔇';
+        }
+
+        // Handle window resize
+        window.addEventListener('resize', updateCatcherPosition);
+    </script>
+</body>
+</html>('touchstart', (e) => {
+            if (!gameActive) return;
+            touchStartX = e.touches[0].clientX;
+        });
+
+        gameArea.addEventListener('touchmove', (e) => {
+            if (!gameActive || touchStartX === null) return;
+            e.preventDefault();
+            
+            const touchX = e.touches[0].clientX;
+            const diff = touchX - touchStartX;
+            
+            if (Math.abs(diff) > 5) {
+                catcherPosition = Math.max(0, Math.min(100, catcherPosition + (diff / 5)));
+                updateCatcherPosition();
+                touchStartX = touchX;
+            }
+        });
+
+        gameArea.addEventListener
